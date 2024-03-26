@@ -54,10 +54,16 @@ jobs:
         run: |
           git config --global user.email "pylon@nordicsemi.no"
           git config --global user.name "Nordic Builder"
-      - name: Change west.yml
+      - name: Change west.yml PR revision
         run: |
-          PROJECT_KEY=$(yq --exit-status '.manifest.projects[] | select(.repo-path == "${{ github.event.repository.name }}") |  key' west.yml)
+          PROJECT_KEY=nrfxlib
           yq ".manifest.projects[$PROJECT_KEY].revision = \"pull/${{ github.event.pull_request.number }}/head\"" west.yml > tmp.yml
+          diff -B west.yml tmp.yml | patch west.yml -
+      - name: Change west.yml Dragoon revision
+        if: ${{ startsWith(github.event.head_commit.message, 'softdevice_controller:\ rev') }}
+        run: |
+          DRAGOON_REV=${{ github.event.head_commit.message }} | awk '{NR==1 print $3}' | head
+          yq ".manifest.projects['dragoon'].revision = \"$DRAGOON_REV\"" west.yml > tmp.yml
           diff -B west.yml tmp.yml | patch west.yml -
       - name: Commit changed west.yml and create PR
         run: |
